@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,16 +11,10 @@ import (
 	"strings"
 )
 
-//http://web.archive.org/cdx/search/cdx?url=%s%s/*&output=json&collapse=urlkey
-
-type graveUrlNode struct {
-	graveUrlNode []graveUrl
-}
-
-type graveUrl struct {
+type waybackUrl struct {
 	url        string
 	httpStatus string
-	//subDomain  string
+	subDomains []string
 }
 
 func getUrls(archiveLink string) []string {
@@ -44,57 +39,61 @@ func getUrls(archiveLink string) []string {
 	return urlList
 }
 
-// we can have a slice of graveUrl Type e.g. make([]graveUrl,0,len(FOOBAR))
+// we can have a slice of waybackUrl Type e.g. make([]waybackUrl,0,len(FOOBAR))
 // make is used to create dynamically-sized arrays
-func checkStatus(urls []string) []graveUrl {
+func checkStatus(urls []string) []waybackUrl {
 
 	//fill Struct in here you have the URLs and the resulting Status
 	//empty structs in result because we make() with len of urls but some URLS are not reachable thus are not getting added to the slice of struct
-	graveUrls := make([]graveUrl, len(urls))
+	waybackUrls := make([]waybackUrl, len(urls))
 
 	//a GET for ALL urls, skipping first entry as its always "original"
 	for _, u := range urls[1:] {
+
+		subDomains := getSubdomain(u)
 		fmt.Println("Checking", u)
 		resp, err := http.Get(u)
-
+		// some Urls are not resolving
 		if err != nil {
 			continue
 		}
+		defer resp.Body.Close()
 
 		if resp == nil {
 			continue
 		} else {
-			graveUrls = append(graveUrls, graveUrl{url: u, httpStatus: resp.Status})
+			waybackUrls = append(waybackUrls, waybackUrl{url: u, httpStatus: resp.Status, subDomains: subDomains})
 		}
 
 	}
-	return graveUrls
+	return waybackUrls
 }
 
-func getSubdomain(u string) string {
+func getSubdomain(u string) []string {
 	parse, err := url.Parse(u)
-
+	//sometimes returns empty list
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(strings.Split(parse.Hostname(), "."))
 
-	return "string"
+	return strings.Split(parse.Hostname(), ".")
 }
 
 func main() {
 
-	//httpClient := http.Client{Timeout: 2 * time.Second}
-	//http://ie-drivermanagement-ieng-staging.ieng-staging.je-labs.com/
+	var statusCode bool
+	flag.BoolVar(&statusCode, "status", false, "display HTTP status code")
+	var subDomains bool
+	flag.BoolVar(&subDomains, "subdomain", false, "display found subdomains")
 
-	getSubdomain("http://ie-drivermanagement-ieng-staging.ieng-staging.je-labs.com/")
-	os.Exit(1)
+	flag.Parse()
 
-	if len(os.Args) < 1 {
+	if flag.NArg() < 1 {
 		fmt.Println("You need to supply a domain.")
 		os.Exit(1)
 	}
-	urlToCheck := os.Args[1]
+
+	urlToCheck := flag.Arg(0)
 
 	archiveLink := fmt.Sprintf("http://web.archive.org/cdx/search/cdx?url=*.%s/*&output=json&collapse=urlkey", urlToCheck)
 
@@ -103,8 +102,15 @@ func main() {
 	statusMap := checkStatus(urls)
 
 	for _, status := range statusMap {
-		fmt.Println(status)
-
+		if status.url == "" {
+			continue
+		} else if statusCode {
+			fmt.Println(status.url, status.httpStatus)
+		} else if subDomains {
+			fmt.Println(status.subDomains)
+		} else {
+			fmt.Println(status.url)
+		}
 	}
 
 }
