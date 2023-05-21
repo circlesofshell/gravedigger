@@ -5,11 +5,15 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
+
+const timeout = 1 * time.Second
 
 type waybackUrl struct {
 	url        string
@@ -42,8 +46,9 @@ func getUrls(archiveLink string) []string {
 // we can have a slice of waybackUrl Type e.g. make([]waybackUrl,0,len(FOOBAR))
 // make is used to create dynamically-sized arrays
 func checkStatus(urls []string) []waybackUrl {
+	start := time.Now()
+	client := &http.Client{Timeout: timeout}
 
-	//fill Struct in here you have the URLs and the resulting Status
 	//empty structs in result because we make() with len of urls but some URLS are not reachable thus are not getting added to the slice of struct
 	waybackUrls := make([]waybackUrl, len(urls))
 
@@ -51,14 +56,13 @@ func checkStatus(urls []string) []waybackUrl {
 	for _, u := range urls[1:] {
 
 		subDomains := getSubdomain(u)
-		fmt.Println("Checking", u)
-		resp, err := http.Get(u)
+		log.Println("Checking", u)
+		resp, err := client.Get(u)
 		// some Urls are not resolving
 		if err != nil {
 			continue
 		}
 		defer resp.Body.Close()
-
 		if resp == nil {
 			continue
 		} else {
@@ -66,12 +70,16 @@ func checkStatus(urls []string) []waybackUrl {
 		}
 
 	}
+	elapsed := time.Since(start)
+	log.Printf("Function took %s", elapsed)
 	return waybackUrls
 }
 
+// TODO:some times parse fails e.g. INVALID URL ESCAPE "%"
 func getSubdomain(u string) []string {
+	//[TODO]
 	parse, err := url.Parse(u)
-	//sometimes returns empty list
+
 	if err != nil {
 		panic(err)
 	}
