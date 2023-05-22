@@ -21,6 +21,7 @@ type waybackUrl struct {
 	subDomains []string
 }
 
+// TODO: Move getSubdomains into this function
 func getUrls(archiveLink string) []string {
 	var urlList []string
 	fmt.Println(archiveLink)
@@ -43,6 +44,9 @@ func getUrls(archiveLink string) []string {
 	return urlList
 }
 
+// TODO: checkStatus takes very long for a large set of data
+// TODO: dont do the checking in this function
+// maybe only check the actuall domain?
 // we can have a slice of waybackUrl Type e.g. make([]waybackUrl,0,len(FOOBAR))
 // make is used to create dynamically-sized arrays
 func checkStatus(urls []string) []waybackUrl {
@@ -55,7 +59,10 @@ func checkStatus(urls []string) []waybackUrl {
 	//a GET for ALL urls, skipping first entry as its always "original"
 	for _, u := range urls[1:] {
 
-		subDomains := getSubdomain(u)
+		subDomains, err := getSubdomain(u)
+		if err != nil {
+			continue
+		}
 		log.Println("Checking", u)
 		resp, err := client.Get(u)
 		// some Urls are not resolving
@@ -76,15 +83,17 @@ func checkStatus(urls []string) []waybackUrl {
 }
 
 // TODO:some times parse fails e.g. INVALID URL ESCAPE "%"
-func getSubdomain(u string) []string {
-	//[TODO]
+// TODO: write test for checking www.just-eat.uk/% -> should not parse
+// Return error in this function and test for it in CHECK status -> continue
+func getSubdomain(u string) ([]string, error) {
 	parse, err := url.Parse(u)
 
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("An error occurred while parsing URl")
+
 	}
 
-	return strings.Split(parse.Hostname(), ".")
+	return strings.Split(parse.Hostname(), "."), nil
 }
 
 func main() {
@@ -107,6 +116,13 @@ func main() {
 
 	urls := getUrls(archiveLink)
 
+	if (statusCode && subDomains) == false {
+		for _, url := range urls {
+			fmt.Println(url)
+		}
+		os.Exit(0)
+	}
+
 	statusMap := checkStatus(urls)
 
 	for _, status := range statusMap {
@@ -117,7 +133,7 @@ func main() {
 		} else if subDomains {
 			fmt.Println(status.subDomains)
 		} else {
-			fmt.Println(status.url)
+			fmt.Println(urls)
 		}
 	}
 
