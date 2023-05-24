@@ -45,7 +45,6 @@ func getUrls(archiveLink string) []string {
 }
 
 // TODO: checkStatus takes very long for a large set of data
-// TODO: dont do the checking in this function
 // maybe only check the actuall domain?
 // we can have a slice of waybackUrl Type e.g. make([]waybackUrl,0,len(FOOBAR))
 // make is used to create dynamically-sized arrays
@@ -102,6 +101,8 @@ func main() {
 	flag.BoolVar(&statusCode, "status", false, "display HTTP status code")
 	var subDomains bool
 	flag.BoolVar(&subDomains, "subdomain", false, "display found subdomains")
+	var justUrls bool
+	flag.BoolVar(&justUrls, "urls", false, "display only urls")
 
 	flag.Parse()
 
@@ -116,15 +117,15 @@ func main() {
 
 	urls := getUrls(archiveLink)
 
-	if (statusCode && subDomains) == false {
-		for _, url := range urls {
+	if justUrls {
+		for _, url := range urls[1:] { //first item is always "original"
 			fmt.Println(url)
 		}
 		os.Exit(0)
 	}
 
 	statusMap := checkStatus(urls)
-
+	// TODO: move get subDomains out of this loop as only checkStatus can take very long
 	for _, status := range statusMap {
 		if status.url == "" {
 			continue
@@ -132,8 +133,6 @@ func main() {
 			fmt.Println(status.url, status.httpStatus)
 		} else if subDomains {
 			fmt.Println(status.subDomains)
-		} else {
-			fmt.Println(urls)
 		}
 	}
 
