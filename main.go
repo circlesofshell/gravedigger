@@ -33,7 +33,10 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		fmt.Println("You need to supply a domain.")
+		fmt.Printf("Usage:")
+		fmt.Printf("\t" + "gravedigger -justUrls domain.tld to dig only for Urls\n")
+		fmt.Printf("\t" + "gravedigger -subdomain domain.tld to print out subdomains\n")
+		fmt.Printf("\t" + "gravedigger -status domain.tld to perform a HTTP status check on the URLS (WARNING:Can take a long ass time)\n")
 		os.Exit(1)
 	}
 
@@ -46,6 +49,19 @@ func main() {
 	if justUrls {
 		for _, url := range urls[1:] { //first item is always "original"
 			fmt.Println(url)
+		}
+		os.Exit(0)
+	}
+
+	if subDomains {
+		for _, u := range urls[1:] {
+			subDomains, err := getSubdomain(u)
+			if err != nil {
+				continue
+			}
+
+			log.Println(subDomains[:1]) //last item is TLD
+
 		}
 		os.Exit(0)
 	}
@@ -65,14 +81,14 @@ func main() {
 			continue
 		} else if statusCode {
 			fmt.Println(status.url, status.httpStatus)
-		} else if subDomains {
-			fmt.Println(status.subDomains)
 		}
 	}
 }
 
 // TODO:some times parse fails e.g. INVALID URL ESCAPE "%"
 // TODO: write test for checking www.just-eat.uk/% -> should not parse
+// TODO: if hostname exclude from list
+// TODO: make sure only a single entry for a given subdomain is in list e.g. map and check if seen
 func getSubdomain(u string) ([]string, error) {
 	parse, err := url.Parse(u)
 
