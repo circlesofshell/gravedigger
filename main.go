@@ -26,7 +26,7 @@ func main() {
 	var statusCode bool
 	flag.BoolVar(&statusCode, "status", false, "display HTTP status code")
 	var subDomains bool
-	flag.BoolVar(&subDomains, "subdomain", false, "display found subdomains")
+	flag.BoolVar(&subDomains, "subdomains", false, "display found subdomains")
 	var justUrls bool
 	flag.BoolVar(&justUrls, "urls", false, "display only urls")
 
@@ -34,8 +34,8 @@ func main() {
 
 	if flag.NArg() < 1 {
 		fmt.Printf("Usage:")
-		fmt.Printf("\t" + "gravedigger -justUrls domain.tld to dig only for Urls\n")
-		fmt.Printf("\t" + "gravedigger -subdomain domain.tld to print out subdomains\n")
+		fmt.Printf("\t" + "gravedigger -urls domain.tld to dig only for Urls\n")
+		fmt.Printf("\t" + "gravedigger -subdomains domain.tld to print out subdomains\n")
 		fmt.Printf("\t" + "gravedigger -status domain.tld to perform a HTTP status check on the URLS (WARNING:Can take a long ass time)\n")
 		os.Exit(1)
 	}
@@ -54,15 +54,20 @@ func main() {
 	}
 
 	if subDomains {
+		var sd []string
 		for _, u := range urls[1:] {
-			subDomains, err := getSubdomain(u)
+			subs, err := getSubdomain(u)
 			if err != nil {
 				continue
 			}
-
-			log.Println(subDomains[:1]) //last item is TLD
+			sd = append(sd, subs[:1]...)
 
 		}
+
+		for _, sds := range removeDuplicates(sd) {
+			fmt.Println(sds)
+		}
+
 		os.Exit(0)
 	}
 
@@ -85,10 +90,32 @@ func main() {
 	}
 }
 
+// helper function to remove duplicates from subdomain slice
+// TODO: works but ugly as shit. Why using a counter anyway?https://hackernoon.com/how-to-remove-duplicates-in-go-slices
+func removeDuplicates(listOfSubDomains []string) []string {
+	m := make(map[string]int)
+	var singleSubs []string
+
+	counter := 0
+
+	for _, sub := range listOfSubDomains {
+		m[sub] = counter
+		if _, keyExists := m[sub]; keyExists {
+			//log.Println("Subdomain already exists")
+			counter++
+		}
+	}
+	for k := range m {
+		singleSubs = append(singleSubs, k)
+
+	}
+	//log.Println(m)
+	return singleSubs
+}
+
 // TODO:some times parse fails e.g. INVALID URL ESCAPE "%"
 // TODO: write test for checking www.just-eat.uk/% -> should not parse
 // TODO: if hostname exclude from list
-// TODO: make sure only a single entry for a given subdomain is in list e.g. map and check if seen
 func getSubdomain(u string) ([]string, error) {
 	parse, err := url.Parse(u)
 
