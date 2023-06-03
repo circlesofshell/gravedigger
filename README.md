@@ -1,7 +1,8 @@
 ## gravedigger version 0.000069
 ![gravedigger](gravedigger.jpg) 
 
-waybackurls on the rocks, digs for archived URLs 
+waybackurls on the rocks, digs for archived URLs.
+
 If you want speed and accuracy use the original. Thanks [Tomnomnom](https://github.com/Tomnomnom) for the great tool.
 
 ```
