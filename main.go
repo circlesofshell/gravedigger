@@ -24,7 +24,7 @@ type waybackUrl struct {
 func main() {
 
 	var statusCode bool
-	flag.BoolVar(&statusCode, "status", false, "display HTTP status code")
+	flag.BoolVar(&statusCode, "status", false, "display HTTP status code[!takes ages for a large set of URLs!]")
 	var subDomains bool
 	flag.BoolVar(&subDomains, "subdomains", false, "display found subdomains")
 	var justUrls bool
@@ -128,8 +128,6 @@ func getSubdomain(u string) ([]string, error) {
 }
 
 // TODO: checkStatus takes very long for a large set of data
-// we can have a slice of waybackUrl Type e.g. make([]waybackUrl,0,len(FOOBAR))
-// make is used to create dynamically-sized arrays
 func checkStatus(urls []string) []waybackUrl {
 	start := time.Now()
 	client := &http.Client{Timeout: timeout}
