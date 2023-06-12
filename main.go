@@ -13,12 +13,10 @@ import (
 	"time"
 )
 
-const timeout = 1 * time.Second
-
-type waybackUrl struct {
+type waybackStatus struct {
 	url        string
 	httpStatus string
-	subDomains []string
+	//subDomains []string
 }
 
 func main() {
@@ -46,6 +44,10 @@ func main() {
 
 	urls := getUrls(archiveLink)
 
+	if statusCode {
+		checkStatus(urls)
+	}
+
 	if justUrls {
 		for _, url := range urls[1:] { //first item is always "original"
 			fmt.Println(url)
@@ -71,7 +73,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	statusMap := checkStatus(urls)
+	//statusMap := checkStatus(urls)
 	// TODO: move get subDomains out of this loop as only checkStatus can take very long
 	// and its only if/else right now, so only checked for one flag
 
@@ -81,13 +83,13 @@ func main() {
 		}
 	}) */
 
-	for _, status := range statusMap {
+	/* for _, status := range statusMap {
 		if status.url == "" {
 			continue
 		} else if statusCode {
 			fmt.Println(status.url, status.httpStatus)
 		}
-	}
+	} */
 }
 
 // helper function to remove duplicates from subdomain slice
@@ -128,7 +130,7 @@ func getSubdomain(u string) ([]string, error) {
 }
 
 // TODO: checkStatus takes very long for a large set of data
-func checkStatus(urls []string) []waybackUrl {
+/* func checkStatus(urls []string) []waybackUrl {
 	start := time.Now()
 	client := &http.Client{Timeout: timeout}
 
@@ -159,6 +161,74 @@ func checkStatus(urls []string) []waybackUrl {
 	elapsed := time.Since(start)
 	log.Printf("Function took %s", elapsed)
 	return waybackUrls
+} */
+
+func checkStatus(urls []string) {
+	urlsChan := make(chan string, 100)
+	statusChan := make(chan string)
+
+	log.Println("in checkStatus")
+
+	var urlStatus []string
+
+	for i := 0; i < cap(urlsChan); i++ {
+		go checkStatusWorker(urlsChan, statusChan)
+	}
+
+	go func() {
+		for _, url := range urls {
+			urlsChan <- url
+		}
+	}()
+
+	for i := 0; i < 1024; i++ {
+		url := <-statusChan
+		if url != "" {
+			urlStatus = append(urlStatus, url)
+		}
+	}
+
+	close(urlsChan)
+	close(statusChan)
+
+	for _, url := range urlStatus {
+		fmt.Printf("%s what\n", url)
+	}
+
+}
+
+func checkStatusWorker(urls, status chan string) {
+	const timeout = 1 * time.Second
+	start := time.Now()
+	client := &http.Client{Timeout: timeout}
+	log.Println("in Worker")
+
+	//empty structs in result because we make() with len of urls but some URLS are not reachable thus are not getting added to the slice of struct
+	//waybackUrls := make([]waybackStatus, len(urls))
+
+	//a GET for ALL urls, skipping first entry as its always "original"
+	for url := range urls {
+		log.Println("Checking", url)
+		resp, err := client.Get(url)
+		// some Urls are not resolving
+		if err != nil {
+			status <- ""
+			continue
+		}
+
+		defer resp.Body.Close()
+		if resp == nil {
+			status <- ""
+			continue
+		} else {
+			status <- resp.Status
+			//waybackUrls = append(waybackUrls, waybackStatus{url: url, httpStatus: resp.Status})
+		}
+
+	}
+	elapsed := time.Since(start)
+	log.Printf("Function took %s", elapsed)
+
 }
 
 // TODO: Move getSubdomains into this function
