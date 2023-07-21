@@ -45,7 +45,7 @@ func main() {
 	urls := getUrls(archiveLink)
 
 	if statusCode {
-		checkStatus(urls)
+		checkStatus(urls[1:])
 	}
 
 	if justUrls {
@@ -164,36 +164,41 @@ func getSubdomain(u string) ([]string, error) {
 } */
 
 func checkStatus(urls []string) {
+	//fmt.Println(urls)
 	urlsChan := make(chan string, 100)
 	statusChan := make(chan string)
 
-	log.Println("in checkStatus")
+	//log.Println("in checkStatus")
 
 	var urlStatus []string
 
 	for i := 0; i < cap(urlsChan); i++ {
 		go checkStatusWorker(urlsChan, statusChan)
 	}
-
 	go func() {
 		for _, url := range urls {
 			urlsChan <- url
 		}
 	}()
-
-	for i := 0; i < 1024; i++ {
-		url := <-statusChan
-		if url != "" {
-			urlStatus = append(urlStatus, url)
+	
+	
+	for i := 0; i < len(urls); i++ { //not running into a panic anymore because we are checking on the capacity of urls
+		urlStat := <-statusChan
+		if urlStat != "" {
+			//correctly displays all the STATUS without panic?
+			fmt.Println(urls[i],urlStat)
+			urlStatus = append(urlStatus, urlStat)
 		}
+
 	}
 
 	close(urlsChan)
 	close(statusChan)
 
-	for _, url := range urlStatus {
+	//fmt.Println("checkstatus finished")
+	/* for _, url := range urlStatus {
 		fmt.Printf("%s what\n", url)
-	}
+	} */
 
 }
 
@@ -201,14 +206,14 @@ func checkStatusWorker(urls, status chan string) {
 	const timeout = 1 * time.Second
 	start := time.Now()
 	client := &http.Client{Timeout: timeout}
-	log.Println("in Worker")
+	//log.Println("in Worker")
 
 	//empty structs in result because we make() with len of urls but some URLS are not reachable thus are not getting added to the slice of struct
 	//waybackUrls := make([]waybackStatus, len(urls))
 
 	//a GET for ALL urls, skipping first entry as its always "original"
 	for url := range urls {
-		log.Println("Checking", url)
+		//log.Println("Checking", url)
 		resp, err := client.Get(url)
 		// some Urls are not resolving
 		if err != nil {
