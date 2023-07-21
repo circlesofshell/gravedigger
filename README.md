@@ -11,3 +11,7 @@ Usage:  gravedigger -urls domain.tld to dig only for Urls
         gravedigger -status domain.tld to perform a HTTP status check on the URLS (WARNING:Can take a long ass time)
 
 ```
+
+# build
+
+go build -o gravedigger -ldflags "-w -s" main.go
