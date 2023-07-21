@@ -14,4 +14,6 @@ Usage:  gravedigger -urls domain.tld to dig only for Urls
 
 # build
 
+```
 go build -o gravedigger -ldflags "-w -s" main.go
+```
